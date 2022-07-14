@@ -249,7 +249,7 @@ foreaction <- function(ccpainvest,csfinvest,csfarminvest,
 
 if(FALSE){
   
-  action = "Restore"
+  action = "climate-critical protected areas"
   investment = 10
   start = 2022
   end = 2027
@@ -407,7 +407,7 @@ foreuser <- function(action, investment, start, end, rds, pas, mst, pdsi, brazil
   brazilsub$slope.z <- (brazilsub$slope-mean(brazilsub$slope,na.rm=TRUE))/(2*sd(brazilsub$slope,na.rm=TRUE))
   brazilsub$pas.z <- (brazilsub$pas-mean(brazilsub$pas,na.rm=TRUE))/(2*sd(brazilsub$pas,na.rm=TRUE))
   
-  brazilsub$cost.z <- (brazilsub$costperyr-mean(brazilsub$costperyr,na.rm=TRUE))/(2*sd(brazilsub$costperyr,na.rm=TRUE))
+  brazilsub$acc.cost.z <- (brazilsub$accum.cost-mean(brazilsub$accum.cost,na.rm=TRUE))/(2*sd(brazilsub$accum.cost,na.rm=TRUE))
   brazilsub$mstrate.z <- (brazilsub$mstrate-mean(brazilsub$mstrate,na.rm=TRUE))/(2*sd(brazilsub$mstrate,na.rm=TRUE))
   brazilsub$prate.z <- (brazilsub$pdsirate-mean(brazilsub$pdsirate,na.rm=TRUE))/(2*sd(brazilsub$pdsirate,na.rm=TRUE))
   

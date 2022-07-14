@@ -5,9 +5,9 @@ account: forecastingconservation
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6642432
-bundleId: 6098546
+bundleId: 6098706
 url: https://forecastingconservation.shinyapps.io/tutorialapp/
-when: 1657816114.25252
-lastSyncTime: 1657816114.25254
+when: 1657819561.74477
+lastSyncTime: 1657819561.74477
 asMultiple: FALSE
 asStatic: FALSE

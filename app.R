@@ -199,10 +199,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                       selectInput(inputId = "action",
                                                   label = "Intervention type",
                                                   choices = c("---Choose one---",
-                                                              "Climate-Critical PAs",
-                                                              "Climate-Smart Forestry",
-                                                              "Climate-Smart Farming",
-                                                              "Forest and Wetland Restoration"),
+                                                              "climate-critical protected areas",
+                                                              "climate-smart forestry",
+                                                              "climate-smart farming",
+                                                              "forest and wetland restoration"),
                                                   selected="---Choose one---"),
                                       sliderInput(inputId = "investment",
                                                   label = "Total investment ($ millions)",
@@ -281,7 +281,7 @@ server <- function(input, output) {
   get.foredata <- eventReactive(input$forecastactiontrackrun, {
     
     foreaction(as.numeric(input$ccpainvest),  as.numeric(input$csfinvest), 
-               as.numeric(input$csfarm),
+               as.numeric(input$csfarminvest),
                as.numeric(input$restoreinvest), 
                brazil) 
    
@@ -421,6 +421,28 @@ server <- function(input, output) {
   
   
   observeEvent(input$forecastactiontrackrun, {
+    
+    output$forecastaction <- renderImage({
+      
+      forecastplots <- normalizePath(file.path("figures/forecasts_allone.png"))
+      
+      list(src = forecastplots, width="800", height="400")
+    }, deleteFile = FALSE)
+  })
+  
+  observeEvent(input$runforecastparameter, {
+    
+    output$forecastparameterplots <- renderImage({
+      
+      forecastparameter <- normalizePath(file.path("figures/yrs.z_txbycont_forecasts.png"))
+      
+      list(src = forecastparameter, width="800", height="400")
+    }, deleteFile = FALSE)
+  })
+    
+    
+    
+    if(FALSE){
     output$forecastaction <- renderPlot({
       fore <- get.foredata()[[1]]
       
@@ -437,42 +459,29 @@ server <- function(input, output) {
       
       
       fore$int <- ifelse(fore$intervention %in% c("climate-critical protected areas", 
-                                                            "control climate-critical protected areas"),
-                             "climate-critical protected areas", NA)
+                                                  "control climate-critical protected areas"),
+                         "climate-critical protected areas", NA)
       fore$int <- ifelse(fore$intervention %in% c("climate-smart forestry: manage", 
-                                                            "control climate-smart forestry: manage"),
-                             "climate-smart forestry: manage", fore$int)
+                                                  "control climate-smart forestry: manage"),
+                         "climate-smart forestry: manage", fore$int)
       fore$int <- ifelse(fore$intervention %in% c("climate-smart farming", 
-                                                            "control climate-smart farming"),
-                             "climate-smart farming", fore$int)
+                                                  "control climate-smart farming"),
+                         "climate-smart farming", fore$int)
       fore$int <- ifelse(fore$intervention %in% c("forest and wetland restoration", 
-                                                            "control forest and wetland restoration"),
-                             "forest and wetland restoration", fore$int)
+                                                  "control forest and wetland restoration"),
+                         "forest and wetland restoration", fore$int)
       
       
       
       fore$costperint <- ave(fore$costperyr, fore$int, fore$year, FUN=sum)
       
       cols <-viridis_pal(option="viridis")(4)
-      invest.fore <- ggplot(fore) + 
-        geom_smooth(se=TRUE, aes(x=year, y=costperint/1000, col=int), 
-                    method="auto", level=0.5) +
-        theme_classic() + scale_color_manual(name="Intervention", values=cols,
-                                             labels=c("climate-critical protected areas"=
-                                                        "climate-critical\nprotected areas",
-                                                      "climate-smart farming"="climate-smart\nfarming",
-                                                      "climate-smart forestry:manage"="climate-smart\nforestry",
-                                                      "forest and wetland restoration"="forest and\nwetland restoration")) +
-        ylab("Total investments ($1K)") + xlab("") +
-        theme(legend.position = "none") 
-      png("figures/investments_fore.png", width = 640, height = 480, res = 150)
-      invest.fore
-      dev.off()
-      
       
       fore$accumcost.mil <- fore$accum.cost/1000000
-      rawinvest <- ggplot(fore[fore$tx==1,], aes(x = accumcost.mil, y = lc_ha_rate, col=intervention)) + 
-        geom_smooth(method="lm", level=0.5, aes(fill=intervention)) + theme_classic() + 
+      modinvest <- ggplot(fore[fore$tx==1,], aes(x = accumcost.mil, y = Estimate, col=intervention)) + 
+        geom_smooth(method="lm", aes(fill=intervention)) + theme_classic() + 
+        #geom_ribbon(aes(ymin=Q25, ymax=Q75, col=intervention, fill=intervention), 
+         #           linetype=0, alpha=0.1) +
         geom_hline(yintercept = 0, linetype="dotted") +
         theme(legend.position = "none") +
         scale_color_manual(name="Intervention",
@@ -482,13 +491,13 @@ server <- function(input, output) {
                           labels=sort(unique(fore$intervention[fore$tx==1])),
                           values=cols) +
         xlab("Investment (1M USD)") + ylab("Rate of natural land cover change")
-      png("figures/rawinvestments_fore.png", width = 640, height = 480, res = 150)
-      rawinvest
-      dev.off()
+     
       
-      rawyears <- ggplot(fore[fore$tx==1,], aes(x = yrsofproject, y = lc_ha_rate, col=intervention)) + 
-        geom_smooth(method="lm", level=0.5, aes(fill=intervention)) + theme_classic() + 
+      modyears <- ggplot(fore[fore$tx==1,], aes(x = yrsofproject, y = Estimate, col=intervention)) + 
+        geom_smooth(method="lm", aes(fill=intervention)) + theme_classic() + 
         geom_hline(yintercept = 0, linetype="dotted") +
+        #geom_ribbon(aes(ymin=Q25, ymax=Q75, col=group, fill=group), 
+          #          linetype=0, alpha=0.1) +
         scale_color_manual(name="Intervention",
                            labels=sort(unique(fore$intervention[fore$tx==1])),
                            values=cols) +
@@ -496,103 +505,88 @@ server <- function(input, output) {
                           labels=sort(unique(fore$intervention[fore$tx==1])),
                           values=cols) +
         xlab("Years of project") + ylab("Rate of natural land cover change")
-      png("figures/rawyears_fore.png", width = 640, height = 480, res = 150)
-      rawyears
-      dev.off()
       
-      growth.fore <- ggplot(fore, aes(x=year, y=Estimate, col=int)) +
-        geom_smooth(method="lm", aes(linetype=as.factor(tx)), level=0.5) + theme_classic() +
-        #geom_ribbon(aes(ymin=Q25, ymax=Q75, col=int, fill=int), 
-         #           linetype=0, alpha=0.1) +
-        scale_color_manual(name="Intervention", values=cols,
-                           labels=c("climate-critical protected areas"=
-                                      "climate-critical\nprotected areas",
-                                    "climate-smart farming"="climate-smart\nfarming",
-                                    "climate-smart forestry:manage"="climate-smart\nforestry",
-                                    "forest and wetland restoration"="forest and\nwetland restoration")) +
-        ylab("Annual change in forest cover") + xlab("")  +
-        scale_linetype_manual(name="Treatment", values=c("dashed", "solid"),
-                              labels=c("0"="control", "1"="treatment"))
       
-      grid.arrange(invest.fore, rawinvest, rawyears, ncol=3)
-    
+      grid.arrange(modinvest, modyears, ncol=2)
+      
       
       observeEvent(input$runforecastparameter, {
         output$forecastparameterplots <- renderPlot({
           
-        forecastparametername <- get.forecastparameter()#[1]
-        forecastparameterlabel<- get.forecastparameterlabel()#[2]
-        
-        
-                bb <- fore
-                if(TRUE){
-                  bb$itvn <- ifelse(bb$intervention=="control climate-smart forestry: manage", 
-                                    "climate-smart forestry: manage (zcontrol)", bb$intervention)
-                  bb$itvn <- ifelse(bb$intervention=="control climate-smart farming", 
-                                    "climate-smart farming (zcontrol)", bb$itvn)
-                  bb$itvn <- ifelse(bb$intervention=="control climate-critical protected areas", 
-                                    "climate-critical protected areas (zcontrol)", bb$itvn)
-                  bb$itvn <- ifelse(bb$intervention=="control forest and wetland restoration", 
-                                    "forest and wetland restoration (zcontrol)", bb$itvn)
-                }
-                
-                
-                bb$itvn <- Hmisc::capitalize(bb$itvn)
-                
-                
-                itvns <- sort(unique(bb$itvn))
-                predslist <- c("yrs.z", "cost.z", "rds.z", "pas.z",
-                               "pdsi.z", "prate.z", "mst.z", "mstrate.z",
-                               "elev.z", "slope.z")
-                
-                
-                origparams <- c("yrsofproject", "costperyr", "numrds", "pas",
-                                "pdsi", "pdsirate", "mst", "mstrate",
-                                "elev", "slope")
-                
-                
-                labs <- c("Years since\nstart of project", "Investment per year\n($ thousands)", "Number of roads",
-                          "Protected areas\n(binary)",
-                          "PDSI", "Annual PDSI\nrate of change", 
-                          "Mean spring\ntemperature (ºC)", "Mean spring temp\nrate of change",
-                          "Elevation", "Slope (*100)")
-                
-                
-                itvnnums <- c(1, 3, 5, 7)
-                
-                bb$costperyr <- bb$costperyr/1000
-                
-                colz <- rev(brewer.pal(n = 8, name = "Paired"))
-                  
-                
-                   i = forecastparametername 
-                   j = forecastparameterlabel
-                    for(l in c(1, 3, 5, 7)){ #l=1
-                      
-                      mylist <- lapply(itvnnums, function(l) {
-                        ggplot(bb[bb$itvn %in% itvns[c(l,l+1)],], aes(x=unname(purrr::as_vector(bb[i][bb$itvn %in% itvns[c(l,l+1)],])), 
-                                                                      y=bb$Estimate[bb$itvn %in% itvns[c(l,l+1)]], col=bb$itvn[bb$itvn %in% itvns[c(l,l+1)]])) + 
-                          geom_smooth(method="lm") + xlab(j) + ggtitle(unique(bb$itvn[bb$itvn %in% itvns[l]])) +
-                          ylab("Rate of forest cover change") + theme_classic() + 
-                          theme(plot.title = element_text(size=10, face="bold"),
-                                legend.position = ifelse(unique(bb$itvn[bb$itvn %in% itvns[l]])=="Forest and wetland restoration", 'right', 'none'), 
-                                axis.text=element_text(size=9)) + 
-                          scale_y_continuous(expand = c(0, 0)) + 
-                          geom_ribbon(aes(ymin=Q25, ymax=Q75, col=itvn, fill=itvn), 
-                                      linetype=0, alpha=0.4) +
-                          scale_colour_manual(name="Intervention", values=colz[c(l, l+1)],
-                                              labels=c("intervention", "control")) +
-                          scale_fill_manual(name="Intervention", values=colz[c(l, l+1)],
-                                            labels=c("intervention", "control"))
-                      })
-                    }
-                    grid.arrange(grobs = mylist, layout_matrix=rbind(c(1, 1,  2, 2,  3, 3, 4, 4, 4)))
-                })
+          forecastparametername <- get.forecastparameter()#[1]
+          forecastparameterlabel<- get.forecastparameterlabel()#[2]
+          
+          
+          bb <- fore
+          if(TRUE){
+            bb$itvn <- ifelse(bb$intervention=="control climate-smart forestry: manage", 
+                              "climate-smart forestry: manage (zcontrol)", bb$intervention)
+            bb$itvn <- ifelse(bb$intervention=="control climate-smart farming", 
+                              "climate-smart farming (zcontrol)", bb$itvn)
+            bb$itvn <- ifelse(bb$intervention=="control climate-critical protected areas", 
+                              "climate-critical protected areas (zcontrol)", bb$itvn)
+            bb$itvn <- ifelse(bb$intervention=="control forest and wetland restoration", 
+                              "forest and wetland restoration (zcontrol)", bb$itvn)
+          }
+          
+          
+          bb$itvn <- Hmisc::capitalize(bb$itvn)
+          
+          
+          itvns <- sort(unique(bb$itvn))
+          predslist <- c("yrs.z", "cost.z", "rds.z", "pas.z",
+                         "pdsi.z", "prate.z", "mst.z", "mstrate.z",
+                         "elev.z", "slope.z")
+          
+          
+          origparams <- c("yrsofproject", "costperyr", "numrds", "pas",
+                          "pdsi", "pdsirate", "mst", "mstrate",
+                          "elev", "slope")
+          
+          
+          labs <- c("Years since\nstart of project", "Investment per year\n($ thousands)", "Number of roads",
+                    "Protected areas\n(binary)",
+                    "PDSI", "Annual PDSI\nrate of change", 
+                    "Mean spring\ntemperature (ºC)", "Mean spring temp\nrate of change",
+                    "Elevation", "Slope (*100)")
+          
+          
+          itvnnums <- c(1, 3, 5, 7)
+          
+          bb$costperyr <- bb$costperyr/1000
+          
+          colz <- rev(brewer.pal(n = 8, name = "Paired"))
+          
+          
+          i = forecastparametername 
+          j = forecastparameterlabel
+          for(l in c(1, 3, 5, 7)){ #l=1
+            
+            mylist <- lapply(itvnnums, function(l) {
+              ggplot(bb[bb$itvn %in% itvns[c(l,l+1)],], aes(x=unname(purrr::as_vector(bb[i][bb$itvn %in% itvns[c(l,l+1)],])), 
+                                                            y=bb$Estimate[bb$itvn %in% itvns[c(l,l+1)]], col=bb$itvn[bb$itvn %in% itvns[c(l,l+1)]])) + 
+                geom_smooth(method="lm") + xlab(j) + ggtitle(unique(bb$itvn[bb$itvn %in% itvns[l]])) +
+                ylab("Rate of forest cover change") + theme_classic() + 
+                theme(plot.title = element_text(size=10, face="bold"),
+                      legend.position = ifelse(unique(bb$itvn[bb$itvn %in% itvns[l]])=="Forest and wetland restoration", 'right', 'none'), 
+                      axis.text=element_text(size=9)) + 
+                scale_y_continuous(expand = c(0, 0)) + 
+                geom_ribbon(aes(ymin=Q25, ymax=Q75, col=itvn, fill=itvn), 
+                            linetype=0, alpha=0.4) +
+                scale_colour_manual(name="Intervention", values=colz[c(l, l+1)],
+                                    labels=c("intervention", "control")) +
+                scale_fill_manual(name="Intervention", values=colz[c(l, l+1)],
+                                  labels=c("intervention", "control"))
+            })
+          }
+          grid.arrange(grobs = mylist, layout_matrix=rbind(c(1, 1,  2, 2,  3, 3, 4, 4, 4)))
+        })
       })
       
     })
-      
-    })
+    }
+    
+  
   
   
   observeEvent(input$runforecastuser, {
@@ -628,23 +622,16 @@ server <- function(input, output) {
       
       fore$costperint <- ave(fore$costperyr, fore$int, fore$year, FUN=sum)
       
-      cols <-viridis_pal(option="viridis")(4)
-      invest.fore <- ggplot(fore) + 
-        geom_smooth(se=TRUE, aes(x=year, y=costperint/1000, col=int), 
-                    method="auto", level=0.5) +
-        theme_classic() + scale_color_manual(name="Intervention", values=cols,
-                                             labels=c("climate-critical protected areas"=
-                                                        "climate-critical\nprotected areas",
-                                                      "climate-smart farming"="cimate-smart\nfarming",
-                                                      "climate-smart forestry:manage"="climate-smart\nforestry",
-                                                      "forest and wetland restoration"="forest and\nwetland restoration")) +
-        ylab("Total investments ($1K)") + xlab("")
-      
-      
       fore$accumcost.mil <- fore$accum.cost/1000000
-      rawinvest <- ggplot(fore[fore$tx==1,], aes(x = accumcost.mil, y = lc_ha_rate, col=intervention)) + 
-        geom_smooth(method="lm", level=0.5, aes(fill=intervention)) + theme_classic() + 
+      
+      cols <-viridis_pal(option="viridis")(4)
+      modinvest <- ggplot(fore[fore$tx==1,], aes(x = accumcost.mil, y = Estimate, col=intervention)) + 
+        geom_smooth(method="lm", aes(fill=intervention)) + theme_classic() + 
+        ggtitle(unique(fore$int)) +
+        #geom_ribbon(aes(ymin=Q25, ymax=Q75, col=intervention, fill=intervention), 
+        #           linetype=0, alpha=0.1) +
         geom_hline(yintercept = 0, linetype="dotted") +
+        theme(legend.position = "none") +
         scale_color_manual(name="Intervention",
                            labels=sort(unique(fore$intervention[fore$tx==1])),
                            values=cols) +
@@ -653,33 +640,25 @@ server <- function(input, output) {
                           values=cols) +
         xlab("Investment (1M USD)") + ylab("Rate of natural land cover change")
       
-      rawyears <- ggplot(fore[fore$tx==1,], aes(x = yrsofproject, y = lc_ha_rate, col=intervention)) + 
-        geom_smooth(method="lm", level=0.5, aes(fill=intervention)) + theme_classic() + 
-        geom_hline(yintercept = 0, linetype="dotted") +
-        scale_color_manual(name="Intervention",
-                           labels=sort(unique(fore$intervention[fore$tx==1])),
-                           values=cols) +
-        scale_fill_manual(name="Intervention",
-                          labels=sort(unique(fore$intervention[fore$tx==1])),
-                          values=cols) +
-        xlab("Years of project") + ylab("Rate of natural land cover change")
       
       growth.fore <- ggplot(fore, aes(x=year, y=Estimate, col=int)) +
         geom_smooth(method="lm", aes(linetype=as.factor(tx)), level=0.5) + theme_classic() +
         #geom_ribbon(aes(ymin=Q25, ymax=Q75, col=int, fill=int), 
         #           linetype=0, alpha=0.1) +
         scale_color_manual(name="Intervention", values=cols,
-                           labels=c("climate-critical protected areas"=
-                                      "climate-critical\nprotected areas",
-                                    "climate-smart farming"="cimate-smart\nfarming",
-                                    "climate-smart forestry:manage"="climate-smart\nforestry",
-                                    "forest and wetland restoration"="forest and\nwetland restoration")) +
+                           labels=c(aprotect="Protect",
+                                    manage="Manage",
+                                    restore="Restore")) +
+        #scale_fill_manual(name="Intervention", values=cols,
+        #                  labels=c(aprotect="Protect",
+        #                          manage="Manage",
+        #                         restore="Restore")) +
         ylab("Annual change in forest cover") + xlab("")  +
         scale_linetype_manual(name="Treatment", values=c("dashed", "solid"),
                               labels=c("0"="control", "1"="treatment"))
       
-      grid.arrange(invest.fore, ncol=1)
-      grid.arrange(rawinvest, rawyears, ncol=2)
+      
+      grid.arrange(modinvest, growth.fore, ncol=2)
       
       
     })
