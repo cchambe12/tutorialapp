@@ -1,0 +1,13 @@
+name: tutorialapp
+title: tutorialapp
+username:
+account: forecastingconservation
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6642432
+bundleId: 6098546
+url: https://forecastingconservation.shinyapps.io/tutorialapp/
+when: 1657816114.25252
+lastSyncTime: 1657816114.25254
+asMultiple: FALSE
+asStatic: FALSE
